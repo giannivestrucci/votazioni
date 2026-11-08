@@ -51,6 +51,10 @@ npm test          # test di integrazione (voto palese, voto segreto, quorum, ver
 npm run typecheck
 ```
 
+## Pubblicazione online
+
+Per installare la piattaforma su un server con HTTPS (ad esempio un VPS Aruba Cloud) segui la [guida alla pubblicazione](docs/pubblicazione.md). Il pacchetto comprende `Dockerfile`, configurazione Docker Compose con HTTPS automatico (Caddy), script di installazione e di backup in `deploy/`.
+
 ## Configurazione
 
 | Variabile | Significato |

@@ -1,0 +1,33 @@
+# Avvio su un server (es. VPS Aruba Cloud) con HTTPS automatico tramite Caddy.
+# Uso: copia .env.esempio in .env, compila i valori, poi: docker compose up -d --build
+services:
+  votazioni:
+    build: ..
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /data
+    volumes:
+      - ./dati:/data
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMINIO: ${DOMINIO}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - votazioni
+
+volumes:
+  caddy_data:
+  caddy_config:
