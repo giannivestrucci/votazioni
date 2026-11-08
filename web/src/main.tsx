@@ -6,6 +6,7 @@ import { ElencoSedute } from './pagine/ElencoSedute.tsx';
 import { PaginaSeduta } from './pagine/PaginaSeduta.tsx';
 import { Amministrazione } from './pagine/Amministrazione.tsx';
 import { Verifica } from './pagine/Verifica.tsx';
+import { Elezioni } from './pagine/Elezioni.tsx';
 
 function useRotta() {
   const [h, setH] = useState(location.hash.slice(1) || '/');
@@ -36,6 +37,7 @@ function App() {
   else if (!utente) pagina = <Accesso onAccesso={setUtente} />;
   else if (rotta.startsWith('/sedute/')) pagina = <PaginaSeduta id={rotta.split('/')[2]} utente={utente} />;
   else if (rotta.startsWith('/amministrazione') && utente.ruolo === 'admin') pagina = <Amministrazione />;
+  else if (rotta.startsWith('/elezioni') && utente.ruolo === 'admin') pagina = <Elezioni id={rotta.split('/')[2]} />;
   else pagina = <ElencoSedute utente={utente} />;
 
   return (
@@ -45,8 +47,9 @@ function App() {
         <div className="riga">
           <h1><a href="#/" style={{ textDecoration: 'none' }}>Votazioni · Organi collegiali</a></h1>
           <nav aria-label="Menu principale">
-            {utente && <a href="#/">Sedute</a>}
-            {utente?.ruolo === 'admin' && <a href="#/amministrazione">Amministrazione</a>}
+            {utente && <a href="#/">Home</a>}
+            {utente?.ruolo === 'admin' && <a href="#/amministrazione">Organi e sedute</a>}
+            {utente?.ruolo === 'admin' && <a href="#/elezioni">Elezioni</a>}
             <a href="#/verifica">Verifica verbale</a>
             {utente && <span className="piccolo">{utente.nome} {utente.cognome}</span>}
             {utente && <button className="link" onClick={esci}>Esci</button>}

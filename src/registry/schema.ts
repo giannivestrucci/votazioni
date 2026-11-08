@@ -106,3 +106,49 @@ CREATE TABLE IF NOT EXISTS impostazioni (
 );
 ${AUDIT_SCHEMA}
 `;
+
+/** Elezioni dei rappresentanti (O.M. 215/1991, procedura semplificata artt. 21-22). */
+export const ELEZIONI_SCHEMA = `
+CREATE TABLE IF NOT EXISTS elezioni (
+  id TEXT PRIMARY KEY,
+  titolo TEXT NOT NULL,
+  componente TEXT NOT NULL CHECK (componente IN ('genitori','studenti')),
+  apertura TEXT NOT NULL,
+  chiusura TEXT NOT NULL,
+  stato TEXT NOT NULL DEFAULT 'bozza' CHECK (stato IN ('bozza','aperta','chiusa')),
+  aperta_il TEXT,
+  chiusa_il TEXT,
+  creata TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS elezione_classi (
+  id TEXT PRIMARY KEY,
+  elezione_id TEXT NOT NULL REFERENCES elezioni(id),
+  classe TEXT NOT NULL,
+  posti INTEGER NOT NULL,
+  preferenze INTEGER NOT NULL,
+  candidati TEXT,
+  chiave_pub TEXT,
+  chiave_priv TEXT,
+  esito TEXT,
+  radice TEXT,
+  UNIQUE (elezione_id, classe)
+);
+CREATE TABLE IF NOT EXISTS elettori (
+  classe_id TEXT NOT NULL REFERENCES elezione_classi(id),
+  utente_id TEXT NOT NULL REFERENCES utenti(id),
+  candidabile INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (classe_id, utente_id)
+);
+CREATE TABLE IF NOT EXISTS gettoni_elezione (
+  classe_id TEXT NOT NULL REFERENCES elezione_classi(id),
+  utente_id TEXT NOT NULL REFERENCES utenti(id),
+  PRIMARY KEY (classe_id, utente_id)
+);
+CREATE TABLE IF NOT EXISTS verbali_elezione (
+  elezione_id TEXT PRIMARY KEY REFERENCES elezioni(id),
+  sha256 TEXT NOT NULL,
+  firma TEXT NOT NULL,
+  generato TEXT NOT NULL,
+  pdf BLOB NOT NULL
+);
+`;

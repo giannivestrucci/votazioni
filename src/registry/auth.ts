@@ -14,6 +14,29 @@ export class ConsoleEmailSender implements EmailSender {
   }
 }
 
+/**
+ * Invio tramite SMTP (es. il server di posta della scuola o un servizio transazionale).
+ * SMTP_URL: smtps://utente:password@smtp.esempio.it:465  ·  SMTP_FROM: "Votazioni <noreply@scuola.edu.it>"
+ */
+export class SmtpEmailSender implements EmailSender {
+  private transport: Promise<{ sendMail: (o: object) => Promise<unknown> }>;
+  constructor(url: string, private from: string) {
+    this.transport = import('nodemailer').then((m) => m.default.createTransport(url));
+  }
+  async send(to: string, subject: string, text: string) {
+    await (await this.transport).sendMail({ from: this.from, to, subject, text });
+  }
+}
+
+export function emailSenderDaEnv(env: NodeJS.ProcessEnv): EmailSender {
+  if (env.SMTP_URL) {
+    if (!env.SMTP_FROM) throw new Error('SMTP_FROM obbligatorio insieme a SMTP_URL');
+    return new SmtpEmailSender(env.SMTP_URL, env.SMTP_FROM);
+  }
+  if (env.NODE_ENV === 'production') throw new Error('In produzione configura SMTP_URL e SMTP_FROM per inviare i codici di accesso');
+  return new ConsoleEmailSender();
+}
+
 export class AuthError extends Error {
   constructor(public code: string, message: string, public status = 401) { super(message); }
 }

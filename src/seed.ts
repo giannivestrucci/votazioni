@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import { buildApp } from './app.ts';
 
 const dataDir = resolve(process.env.DATA_DIR ?? 'data');
-const { registry, app } = await buildApp({
+const { registry, elezioni, app } = await buildApp({
   service: 'all', registryDb: join(dataDir, 'registro.db'), urnaDb: join(dataDir, 'urna.db'),
   urnaToken: 'seed', devOtp: false, secureCookie: false,
 });
@@ -27,5 +27,11 @@ r.creaSeduta(admin, {
   organoId, titolo: 'Collegio dei docenti ordinario', odg: 'Approvazione del verbale della seduta precedente\nAggiornamento del PTOF\nDesignazione del docente tutor neoassunti',
   dataOra: domani.toISOString(), modalita: 'mista', presidenteId: pres.id, segretarioId: segr.id,
 });
+const el = elezioni!;
+const eid = el.crea(admin, { titolo: 'Rappresentanti dei genitori 2026/27', componente: 'genitori', apertura: new Date(Date.now() - 3600_000).toISOString(), chiusura: new Date(Date.now() + 2 * 24 * 3600_000).toISOString() });
+const genitori = [['1A', 'Lucia', 'Ferrari'], ['1A', 'Matteo', 'Esposito'], ['1A', 'Francesca', 'Russo'], ['1A', 'Giorgio', 'Conti'], ['2B', 'Laura', 'Costa'], ['2B', 'Stefano', 'Fontana'], ['2B', 'Lucia', 'Ferrari']];
+el.importa(admin, eid, genitori.map(([k, n, c]) => `${k};${n.toLowerCase()}.${c.toLowerCase()}@famiglia.it;${n};${c}`).join('\n'), 1);
+await el.apri(admin, eid);
+console.log('Elezione dimostrativa aperta: accedi come lucia.ferrari@famiglia.it (genitore in 1A e 2B).');
 console.log('Dati dimostrativi creati. Accedi come dirigente@scuola.edu.it (o marco.bianchi@scuola.edu.it, ecc.).');
 await app.close();

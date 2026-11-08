@@ -3,14 +3,14 @@ import type { RegistryService } from './service.ts';
 import { TIPI_ORGANO } from './service.ts';
 
 const TZ = 'Europe/Rome';
-const fmtData = (iso: string) => new Date(iso).toLocaleDateString('it-IT', { timeZone: TZ, day: '2-digit', month: 'long', year: 'numeric' });
-const fmtOra = (iso: string) => new Date(iso).toLocaleTimeString('it-IT', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-const fmtDataOra = (iso: string) => `${fmtData(iso)} alle ore ${fmtOra(iso)}`;
+export const fmtData = (iso: string) => new Date(iso).toLocaleDateString('it-IT', { timeZone: TZ, day: '2-digit', month: 'long', year: 'numeric' });
+export const fmtOra = (iso: string) => new Date(iso).toLocaleTimeString('it-IT', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+export const fmtDataOra = (iso: string) => `${fmtData(iso)} alle ore ${fmtOra(iso)}`;
 
 /** I font standard PDF usano WinAnsi: sostituiamo i caratteri non rappresentabili. */
 const winAnsi = (s: string) => s.normalize('NFC').replace(/[^\x20-\x7E\xA0-\xFF€‘’“”–—…•\n]/g, '?');
 
-class Writer {
+export class Writer {
   page!: PDFPage;
   y = 0;
   readonly margin = 56;
@@ -152,5 +152,44 @@ export async function generaVerbalePdf(svc: RegistryService, sedutaId: string): 
   w.space(24);
   w.colonne('______________________________', '______________________________');
 
+  return doc.save({ useObjectStreams: false });
+}
+
+/** Verbale delle operazioni elettorali (una sezione per classe). */
+export async function generaVerbaleElezionePdf(el: import('./elezioni.ts').ElezioniService, admin: import('./auth.ts').Utente, elezioneId: string): Promise<Uint8Array> {
+  const d = await el.dettaglio(admin, elezioneId);
+  const doc = await PDFDocument.create();
+  doc.setTitle(`Verbale - ${d.titolo}`);
+  doc.setLanguage('it-IT');
+  doc.setProducer('Votazioni - piattaforma di voto per organi collegiali');
+  const w = new Writer(doc, await doc.embedFont(StandardFonts.Helvetica), await doc.embedFont(StandardFonts.HelveticaBold));
+  const comp = d.componente === 'genitori' ? 'dei genitori' : 'degli studenti';
+  w.text('VERBALE DELLE OPERAZIONI ELETTORALI', { size: 14, bold: true, gap: 4 });
+  w.text(`${d.titolo} - elezione dei rappresentanti ${comp} nei consigli di classe, interclasse e intersezione`, { size: 11, gap: 8 });
+  w.text(`Procedura semplificata di cui agli artt. 21 e 22 dell'O.M. n. 215 del 15 luglio 1991 e successive modificazioni, con voto segreto espresso in modalità telematica.`);
+  w.text(`Seggio telematico aperto il ${fmtDataOra(d.apertaIl ?? d.apertura)} e chiuso il ${fmtDataOra(d.chiusaIl ?? d.chiusura)}.`);
+  w.text("L'anonimato del voto è garantito da firme cieche (RFC 9474) e dalla separazione tra il servizio che identifica l'elettore e l'urna che raccoglie le schede.", { size: 9, gap: 6 });
+  const totE = d.classi.reduce((a, c) => a + c.elettori, 0);
+  const totV = d.classi.reduce((a, c) => a + (c.esito?.votanti ?? 0), 0);
+  w.text(`Classi: ${d.classi.length}. Elettori: ${totE}. Votanti: ${totV} (${totE ? Math.round((totV / totE) * 100) : 0}%).`, { bold: true });
+  for (const c of d.classi) {
+    w.heading(`Classe ${c.classe}`);
+    if (!c.esito) { w.text('Scrutinio non effettuato.'); continue; }
+    const e = c.esito;
+    w.text(`Elettori ${c.elettori}; votanti ${e.votanti}; schede bianche ${e.bianche}. Posti da coprire: ${c.posti}; preferenze esprimibili: ${c.preferenze}.`);
+    const votati = e.voti.filter((v) => v.voti > 0).sort((a, b) => b.voti - a.voti);
+    w.text(`Voti ottenuti: ${votati.length ? votati.map((v) => `${v.etichetta} ${v.voti}`).join('; ') : 'nessuno'}.`, { indent: 10 });
+    if (e.sorteggio) w.text(`Parità di voti tra ${e.sorteggio.tra.join(', ')} per ${e.sorteggio.posti} posto/i: si procede per sorteggio (art. 22 c.8). Estratti: ${e.sorteggio.estratti.join(', ')}.`, { indent: 10 });
+    w.text(`ELETTI: ${e.eletti.length ? e.eletti.map((x) => `${x.etichetta} (${x.voti} ${x.voti === 1 ? 'voto' : 'voti'}${x.perSorteggio ? ', per sorteggio' : ''})`).join('; ') : 'nessuno'}.`, { indent: 10, bold: true });
+    if (e.eletti.length < c.posti) w.text(`Posti non coperti: ${c.posti - e.eletti.length}.`, { indent: 10 });
+    if (e.anomalia) w.text(`ANOMALIA: ${e.anomalia}`, { indent: 10, bold: true, color: [0.7, 0, 0] });
+    w.text(`Impronta delle schede: ${c.radice}`, { indent: 10, size: 8 });
+  }
+  w.heading('Ricorsi');
+  w.text("Avverso i risultati è ammesso ricorso alla commissione elettorale entro 5 giorni dall'affissione all'albo dell'elenco degli eletti; i ricorsi sono decisi entro i 5 giorni successivi (art. 46 O.M. 215/1991).");
+  w.space(30);
+  w.colonne('Il Presidente della commissione elettorale', 'Il Segretario', { bold: true });
+  w.space(24);
+  w.colonne('______________________________', '______________________________');
   return doc.save({ useObjectStreams: false });
 }

@@ -2,6 +2,7 @@ import { join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import { buildApp } from './app.ts';
+import { emailSenderDaEnv } from './registry/auth.ts';
 
 const env = process.env;
 const service = (env.SERVICE ?? 'all') as 'all' | 'registry' | 'urna';
@@ -20,6 +21,7 @@ const { app, registry } = await buildApp({
   urnaToken: env.URNA_TOKEN ?? 'sviluppo-' + Math.random().toString(36).slice(2),
   devOtp: env.DEV_OTP === '1',
   secureCookie: prod,
+  mail: service === 'urna' ? undefined : emailSenderDaEnv(env),
 });
 
 // Primo amministratore (dirigente o segreteria), se indicato.

@@ -4,7 +4,8 @@ import { openDb } from './shared/db.ts';
 import { generateSigningKey, randomToken } from './shared/crypto.ts';
 import { UrnaService, URNA_SCHEMA } from './urna/service.ts';
 import { DirectUrnaClient, HttpUrnaClient, urnaRoutes, type UrnaClient } from './urna/routes.ts';
-import { REGISTRY_SCHEMA } from './registry/schema.ts';
+import { REGISTRY_SCHEMA, ELEZIONI_SCHEMA } from './registry/schema.ts';
+import { ElezioniService } from './registry/elezioni.ts';
 import { RegistryService } from './registry/service.ts';
 import { AuthService, ConsoleEmailSender, DEFAULT_AUTH, type AuthConfig, type EmailSender } from './registry/auth.ts';
 import { registryRoutes } from './registry/routes.ts';
@@ -44,20 +45,22 @@ export async function buildApp(o: AppOptions) {
 
   let registry: RegistryService | undefined;
   let auth: AuthService | undefined;
+  let elezioni: ElezioniService | undefined;
   if (o.service !== 'urna') {
-    const db = openDb(o.registryDb, REGISTRY_SCHEMA);
+    const db = openDb(o.registryDb, REGISTRY_SCHEMA + ELEZIONI_SCHEMA);
     const client: UrnaClient = urnaSvc ? new DirectUrnaClient(urnaSvc) : new HttpUrnaClient(o.urnaUrl!, o.urnaToken);
     registry = new RegistryService(db, client);
+    elezioni = new ElezioniService(db, registry.audit, client);
     auth = new AuthService(db, registry.audit, o.mail ?? new ConsoleEmailSender(), o.authConfig ?? DEFAULT_AUTH);
     let firma = registry.impostazione('firma_ed25519');
     if (!firma) { firma = JSON.stringify(generateSigningKey()); registry.setImpostazione('firma_ed25519', firma); }
     await app.register(cookie);
-    const reg = registry; const au = auth; const f = JSON.parse(firma);
-    await app.register(async (sub: FastifyInstance) => registryRoutes(sub, { auth: au, svc: reg, firma: f, devOtp: o.devOtp, secureCookie: o.secureCookie }), { prefix: '/api' });
+    const reg = registry; const au = auth; const el = elezioni; const f = JSON.parse(firma);
+    await app.register(async (sub: FastifyInstance) => registryRoutes(sub, { auth: au, svc: reg, elezioni: el, firma: f, devOtp: o.devOtp, secureCookie: o.secureCookie }), { prefix: '/api' });
   }
 
   app.get('/salute', async () => ({ ok: true, servizio: o.service }));
-  return { app, registry, auth, urna: urnaSvc };
+  return { app, registry, auth, elezioni, urna: urnaSvc };
 }
 
 export const defaultUrnaToken = () => process.env.URNA_TOKEN ?? randomToken();
