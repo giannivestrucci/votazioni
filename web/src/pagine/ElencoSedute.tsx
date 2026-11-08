@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, fmtDataOra, type Utente } from '../api.ts';
+import { SchedeElettorali } from './SchedeElettorali.tsx';
 
 const STATO: Record<string, [string, string]> = {
   programmata: ['Programmata', ''],
@@ -14,6 +15,8 @@ export function ElencoSedute({ utente }: { utente: Utente }) {
 
   return (
     <>
+      <SchedeElettorali />
+      {(utente.ruolo === 'admin' || sedute === null || sedute.length > 0) && <>
       <h2>Le tue sedute</h2>
       {utente.ruolo === 'admin' && <p><a href="#/amministrazione">Crea una seduta o gestisci gli organi collegiali</a></p>}
       {errore && <div className="avviso errore" role="alert">{errore}</div>}
@@ -29,6 +32,8 @@ export function ElencoSedute({ utente }: { utente: Utente }) {
           ))}
         </ul>
       )}
+      </>}
+      {utente.ruolo !== 'admin' && sedute?.length === 0 && <p className="muto">Quando sarai convocato a una seduta o chiamato a votare, la troverai qui.</p>}
     </>
   );
 }

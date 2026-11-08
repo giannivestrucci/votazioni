@@ -41,6 +41,19 @@ Legenda: ✅ implementato · 🟡 parziale o dipende dalla configurazione · �
 - **Astenuti**: il computo tra i voti validi è configurabile per seduta, secondo il regolamento d'istituto.
 - **Accessibilità** (L. 4/2004, WCAG 2.1 AA): HTML semantico, etichette sui campi, focus visibile, aree di stato annunciate dagli screen reader, controlli di almeno 44 px. Manca ancora un audit formale.
 
-## Cosa NON copre la nota 3803
+## Elezioni dei rappresentanti (O.M. 215/1991)
 
-La nota riguarda le sedute deliberative (Collegio docenti, consigli di classe, interclasse e intersezione, GLO). Le **elezioni dei rappresentanti** di genitori e studenti restano regolate dall'O.M. 215/1991: saranno un modulo separato, in una fase successiva.
+La nota 3803 riguarda solo le sedute deliberative. Le elezioni dei rappresentanti di genitori e studenti restano regolate dall'O.M. 215/1991. La nota annuale sulle elezioni 2026/27 (prot. 169661 del 30/09/2026) non parla di voto telematico. Il modulo Elezioni applica comunque gli stessi requisiti tecnici dell'Allegato (identificazione, voto segreto con anonimato dimostrabile, verbale firmato, audit). La scelta della modalità telematica va deliberata dal consiglio di circolo o di istituto, che ai sensi dell'art. 22 c.3 lett. b fissa le modalità di votazione e di costituzione del seggio. Si tratta di una nostra lettura, non di un'autorizzazione esplicita.
+
+| Regola O.M. 215/1991 | Come è applicata |
+|---|---|
+| Elettorato attivo e passivo di entrambi i genitori (art. 7) | Ogni genitore ha un proprio accesso; l'elenco si importa da CSV |
+| Lista unica di tutti gli elettori in ordine alfabetico (art. 22 c.7) | I candidati della classe sono tutti gli elettori, in ordine alfabetico |
+| Preferenze: metà dei membri da eleggere se più di uno (art. 22 c.7) | Valore iniziale = metà dei posti, almeno una; modificabile per classe |
+| Seggio per classe (art. 22 c.4) | Un'urna distinta per classe, con chiavi di firma separate |
+| Durata del voto dei genitori non inferiore a due ore (art. 22 c.3) | Indicato nel modulo; la finestra oraria è applicata dal server |
+| Parità: sorteggio (art. 22 c.8) | Sorteggio crittografico, registrato nel verbale e nell'audit |
+| Ricorsi entro 5 giorni dall'affissione (art. 46) | Indicati nel verbale |
+| Voto personale, senza delega | Il voto richiede l'accesso personale con codice monouso |
+
+Non ancora coperto: consiglio di circolo/istituto con liste contrapposte, voti di lista e metodo D'Hondt (artt. 30-44).

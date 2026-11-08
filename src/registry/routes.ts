@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AuthError, type AuthService, type Utente } from './auth.ts';
 import { RegistryError, type RegistryService, TIPI_ORGANO } from './service.ts';
-import { generaVerbalePdf } from './verbale.ts';
+import { generaVerbalePdf, generaVerbaleElezionePdf } from './verbale.ts';
+import type { ElezioniService } from './elezioni.ts';
 import { sha256hex, signEd25519, verifyEd25519 } from '../shared/crypto.ts';
 
 export const COOKIE = 'sid';
@@ -10,13 +11,14 @@ export const COOKIE = 'sid';
 export interface RegistryRouteOpts {
   auth: AuthService;
   svc: RegistryService;
+  elezioni: ElezioniService;
   firma: { publicPem: string; privatePem: string };
   devOtp: boolean;
   secureCookie: boolean;
 }
 
 export function registryRoutes(app: FastifyInstance, o: RegistryRouteOpts) {
-  const { auth, svc } = o;
+  const { auth, svc, elezioni } = o;
 
   app.setErrorHandler((err: any, _req, reply) => {
     if (err instanceof RegistryError || err instanceof AuthError) return reply.code(err.status).send({ errore: err.code, messaggio: err.message });
@@ -182,11 +184,54 @@ export function registryRoutes(app: FastifyInstance, o: RegistryRouteOpts) {
     return { integrita: svc.audit.verify(), voci: svc.audit.list({ like: s.id }) };
   });
 
+  // ---------- Elezioni dei rappresentanti ----------
+  app.get('/elezioni', async (req) => elezioni.elenco(utente(req)));
+  app.post('/elezioni', async (req) => {
+    const b = z.object({ titolo: z.string().min(1), componente: z.enum(['genitori', 'studenti']), apertura: z.string().datetime(), chiusura: z.string().datetime() }).parse(req.body);
+    return { id: elezioni.crea(utente(req), b) };
+  });
+  app.get('/elezioni/:id', async (req) => elezioni.dettaglio(utente(req), id(req)));
+  app.post('/elezioni/:id/importa', async (req) => {
+    const b = z.object({ csv: z.string().max(2_000_000), posti: z.number().int().min(1).max(20) }).parse(req.body);
+    return elezioni.importa(utente(req), id(req), b.csv, b.posti);
+  });
+  app.post('/elezioni/classi/:id', async (req) => {
+    const b = z.object({ posti: z.number().int().min(1).max(20), preferenze: z.number().int().min(1).max(20) }).parse(req.body);
+    elezioni.impostaClasse(utente(req), id(req), b.posti, b.preferenze);
+    return { ok: true };
+  });
+  app.post('/elezioni/:id/apri', async (req) => { await elezioni.apri(utente(req), id(req)); return { ok: true }; });
+  app.post('/elezioni/:id/chiudi', async (req) => { await elezioni.chiudi(utente(req), id(req)); return { ok: true }; });
+  app.get('/mie-schede', async (req) => elezioni.schede(utente(req)));
+  app.post('/elezioni/classi/:id/gettone', async (req) => {
+    const { blindedMsg } = z.object({ blindedMsg: z.string().max(2048) }).parse(req.body);
+    return elezioni.rilasciaGettone(utente(req), id(req), blindedMsg);
+  });
+  app.get('/elezioni/:id/verbale.pdf', async (req, reply: FastifyReply) => {
+    const u = utente(req); const eid = id(req);
+    svc.soloAdmin(u);
+    const e = elezioni.elezione(eid);
+    let r = e.stato === 'chiusa' ? elezioni.verbale(eid) : null;
+    if (!r) {
+      const pdf = await generaVerbaleElezionePdf(elezioni, u, eid);
+      const sha = sha256hex(pdf);
+      r = { pdf, sha256: sha, firma: signEd25519(o.firma.privatePem, sha) };
+      if (e.stato === 'chiusa') elezioni.salvaVerbale(eid, pdf, r.sha256, r.firma);
+    }
+    reply.header('content-type', 'application/pdf')
+      .header('content-disposition', `attachment; filename="verbale-elezioni-${e.titolo.replace(/[^\w-]+/g, '_').slice(0, 40)}${e.stato === 'chiusa' ? '' : '-PROVVISORIO'}.pdf"`)
+      .header('x-verbale-sha256', r.sha256);
+    return reply.send(Buffer.from(r.pdf));
+  });
+
   // ---------- Verifica pubblica ----------
   app.get('/pubblico/chiave', async () => ({ algoritmo: 'Ed25519', chiavePubblica: o.firma.publicPem }));
   app.post('/pubblico/verifica', async (req) => {
     const { sha256 } = z.object({ sha256: z.string().regex(/^[0-9a-f]{64}$/i) }).parse(req.body);
-    const v = svc.verbalePerHash(sha256.toLowerCase());
+    const h = sha256.toLowerCase();
+    const ve = elezioni.verbalePerHash(h);
+    if (ve) return { trovato: true, seduta: ve.titolo, organo: 'Elezioni dei rappresentanti', generato: ve.generato, firma: ve.firma, firmaValida: verifyEd25519(o.firma.publicPem, ve.sha256, ve.firma) };
+    const v = svc.verbalePerHash(h);
     if (!v) return { trovato: false };
     return { trovato: true, seduta: v.titolo, organo: v.organo, generato: v.generato, firma: v.firma, firmaValida: verifyEd25519(o.firma.publicPem, v.sha256, v.firma) };
   });

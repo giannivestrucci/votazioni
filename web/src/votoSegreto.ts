@@ -25,14 +25,18 @@ export interface Trasporto {
  * 4. deposita gettone + firma + scelta nell'Urna, che non sa chi sei.
  * Restituisce la ricevuta (SHA-256 del gettone) da ritrovare nella bacheca pubblica.
  */
-export async function votaSegreto(t: Trasporto, votazioneId: string, scelte: string[]): Promise<string> {
+export async function votaSegreto(t: Trasporto, votazioneId: string, scelte: string[], percorsoGettone = `/votazioni/${votazioneId}/gettone`): Promise<string> {
   const info = await t.urna(`/urne/${votazioneId}`);
+  // Controllo preventivo: una scheda non valida non deve consumare il gettone.
+  if (scelte.length > info.maxChoices || new Set(scelte).size !== scelte.length || scelte.some((s) => !info.options.includes(s))) {
+    throw Object.assign(new Error(`Scelta non valida: puoi indicare al massimo ${info.maxChoices} preferenze tra i nomi in elenco`), { status: 400 });
+  }
   const suite = RSABSSA.SHA384.PSS.Randomized();
   const pk = await crypto.subtle.importKey('spki', dec(info.publicKey), { name: 'RSA-PSS', hash: 'SHA-384' }, true, ['verify']);
   const gettone = crypto.getRandomValues(new Uint8Array(32));
   const msg = suite.prepare(gettone);
   const { blindedMsg, inv } = await suite.blind(pk, msg);
-  const { blindSig } = await t.registro(`/votazioni/${votazioneId}/gettone`, { blindedMsg: enc(blindedMsg) });
+  const { blindSig } = await t.registro(percorsoGettone, { blindedMsg: enc(blindedMsg) });
   const sig = await suite.finalize(pk, msg, dec(blindSig), inv);
   return deposita(t, { votazioneId, msg: enc(msg), sig: enc(sig), scelte });
 }
