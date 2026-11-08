@@ -53,6 +53,8 @@ npm run typecheck
 
 ## Pubblicazione online
 
+**Prova gratuita** in modalità dimostrativa (codici a schermo, dati di esempio, dati cancellati a ogni riavvio): [pubblica su Render](https://render.com/deploy?repo=https://github.com/giannivestrucci/votazioni).
+
 Per installare la piattaforma su un server con HTTPS (ad esempio un VPS Aruba Cloud) segui la [guida alla pubblicazione](docs/pubblicazione.md). Il pacchetto comprende `Dockerfile`, configurazione Docker Compose con HTTPS automatico (Caddy), script di installazione e di backup in `deploy/`.
 
 ## Configurazione
@@ -65,6 +67,7 @@ Per installare la piattaforma su un server con HTTPS (ad esempio un VPS Aruba Cl
 | `URNA_URL`, `URNA_TOKEN` | Con `SERVICE=registry`: indirizzo dell'Urna e segreto condiviso per le chiamate interne |
 | `ADMIN_EMAIL`, `ADMIN_NOME`, `ADMIN_COGNOME` | Primo amministratore, creato all'avvio se non esiste |
 | `SMTP_URL`, `SMTP_FROM` | Invio dei codici di accesso via email, ad esempio `smtps://utente:password@smtp.esempio.it:465` e `"Votazioni <noreply@scuola.edu.it>"`. Obbligatori in produzione; senza, in sviluppo i codici compaiono nella console. |
+| `DEMO=1` | Ambiente di prova pubblico: codici a schermo, dati di esempio alla prima accensione, fascia di avviso. Incompatibile con `SMTP_URL` |
 | `DEV_OTP=1` | Mostra il codice di accesso a schermo (vietato con `NODE_ENV=production`) |
 
 ## Stato e prossimi passi

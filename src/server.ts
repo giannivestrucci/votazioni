@@ -2,26 +2,31 @@ import { join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import fastifyStatic from '@fastify/static';
 import { buildApp } from './app.ts';
-import { emailSenderDaEnv } from './registry/auth.ts';
+import { emailSenderDaEnv, ConsoleEmailSender } from './registry/auth.ts';
+import { popolaDemo, databaseVuoto } from './demo.ts';
 
 const env = process.env;
 const service = (env.SERVICE ?? 'all') as 'all' | 'registry' | 'urna';
 const dataDir = resolve(env.DATA_DIR ?? 'data');
 const prod = env.NODE_ENV === 'production';
+// DEMO=1: ambiente di prova pubblico (es. Render gratuito). Codici a schermo, dati di esempio, fascia di avviso.
+const demo = env.DEMO === '1';
+if (demo && env.SMTP_URL) throw new Error('DEMO=1 non va usato insieme a SMTP_URL: la modalità dimostrativa non è per votazioni reali');
 
 if (service === 'registry' && !env.URNA_URL) throw new Error('URNA_URL obbligatorio con SERVICE=registry');
 if (service !== 'all' && !env.URNA_TOKEN) throw new Error('URNA_TOKEN obbligatorio quando Registro e Urna sono separati');
-if (prod && env.DEV_OTP === '1') throw new Error('DEV_OTP non è ammesso in produzione');
+if (prod && !demo && env.DEV_OTP === '1') throw new Error('DEV_OTP non è ammesso in produzione');
 
-const { app, registry } = await buildApp({
+const { app, registry, elezioni } = await buildApp({
   service,
   registryDb: join(dataDir, 'registro.db'),
   urnaDb: join(dataDir, 'urna.db'),
   urnaUrl: env.URNA_URL,
   urnaToken: env.URNA_TOKEN ?? 'sviluppo-' + Math.random().toString(36).slice(2),
-  devOtp: env.DEV_OTP === '1',
+  devOtp: demo || env.DEV_OTP === '1',
+  demo,
   secureCookie: prod,
-  mail: service === 'urna' ? undefined : emailSenderDaEnv(env),
+  mail: service === 'urna' ? undefined : demo ? new ConsoleEmailSender() : emailSenderDaEnv(env),
 });
 
 // Primo amministratore (dirigente o segreteria), se indicato.
@@ -30,6 +35,11 @@ if (registry && env.ADMIN_EMAIL) {
     registry.creaUtente(null, { email: env.ADMIN_EMAIL, nome: env.ADMIN_NOME ?? 'Dirigente', cognome: env.ADMIN_COGNOME ?? 'Scolastico', ruolo: 'admin' });
     console.log(`Creato amministratore ${env.ADMIN_EMAIL}`);
   } catch { /* già presente */ }
+}
+
+if (demo && registry && elezioni && databaseVuoto(registry)) {
+  await popolaDemo(registry, elezioni);
+  console.log('Modalità dimostrativa: caricati i dati di esempio.');
 }
 
 const webDist = resolve('web/dist');

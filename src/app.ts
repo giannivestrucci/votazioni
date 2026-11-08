@@ -22,6 +22,8 @@ export interface AppOptions {
   mail?: EmailSender;
   authConfig?: AuthConfig;
   logger?: boolean;
+  /** Ambiente dimostrativo: codici a schermo e fascia di avviso nell'interfaccia. */
+  demo?: boolean;
 }
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -56,7 +58,7 @@ export async function buildApp(o: AppOptions) {
     if (!firma) { firma = JSON.stringify(generateSigningKey()); registry.setImpostazione('firma_ed25519', firma); }
     await app.register(cookie);
     const reg = registry; const au = auth; const el = elezioni; const f = JSON.parse(firma);
-    await app.register(async (sub: FastifyInstance) => registryRoutes(sub, { auth: au, svc: reg, elezioni: el, firma: f, devOtp: o.devOtp, secureCookie: o.secureCookie }), { prefix: '/api' });
+    await app.register(async (sub: FastifyInstance) => registryRoutes(sub, { auth: au, svc: reg, elezioni: el, firma: f, devOtp: o.devOtp, demo: o.demo ?? false, secureCookie: o.secureCookie }), { prefix: '/api' });
   }
 
   app.get('/salute', async () => ({ ok: true, servizio: o.service }));

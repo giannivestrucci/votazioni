@@ -1,0 +1,15 @@
+# Ambiente di PROVA gratuito su Render (https://render.com), server a Francoforte.
+# Modalità dimostrativa: codici di accesso a schermo, dati di esempio, nessuna email.
+# I dati si perdono a ogni riavvio. Non usare per votazioni reali: vedi docs/pubblicazione.md.
+services:
+  - type: web
+    name: votazioni-prova
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /salute
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEMO
+        value: "1"

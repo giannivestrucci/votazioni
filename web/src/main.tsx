@@ -21,8 +21,10 @@ function useRotta() {
 function App() {
   const rotta = useRotta();
   const [utente, setUtente] = useState<Utente | null | undefined>(undefined);
+  const [demo, setDemo] = useState(false);
 
   useEffect(() => {
+    api.get<{ demo: boolean }>('/pubblico/ambiente').then((r) => setDemo(r.demo)).catch(() => {});
     api.get<Utente>('/me').then(setUtente).catch(() => setUtente(null));
     const scaduta = () => setUtente(null);
     addEventListener('sessione-scaduta', scaduta);
@@ -43,6 +45,13 @@ function App() {
   return (
     <>
       <a className="salta" href="#contenuto" onClick={(e) => { e.preventDefault(); document.getElementById('contenuto')?.focus(); }}>Vai al contenuto</a>
+      {demo && (
+        <div className="fascia-demo" role="note">
+          <strong>Ambiente di prova</strong>: non usarlo per votazioni reali. I dati vengono cancellati periodicamente.
+          {' '}Accedi come <code>dirigente@scuola.edu.it</code> (amministrazione), <code>marco.bianchi@scuola.edu.it</code> (docente)
+          {' '}o <code>lucia.ferrari@famiglia.it</code> (genitore): il codice compare a schermo.
+        </div>
+      )}
       <header className="testata">
         <div className="riga">
           <h1><a href="#/" style={{ textDecoration: 'none' }}>Votazioni · Organi collegiali</a></h1>

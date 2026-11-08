@@ -14,6 +14,7 @@ export interface RegistryRouteOpts {
   elezioni: ElezioniService;
   firma: { publicPem: string; privatePem: string };
   devOtp: boolean;
+  demo?: boolean;
   secureCookie: boolean;
 }
 
@@ -225,6 +226,7 @@ export function registryRoutes(app: FastifyInstance, o: RegistryRouteOpts) {
   });
 
   // ---------- Verifica pubblica ----------
+  app.get('/pubblico/ambiente', async () => ({ demo: !!o.demo }));
   app.get('/pubblico/chiave', async () => ({ algoritmo: 'Ed25519', chiavePubblica: o.firma.publicPem }));
   app.post('/pubblico/verifica', async (req) => {
     const { sha256 } = z.object({ sha256: z.string().regex(/^[0-9a-f]{64}$/i) }).parse(req.body);
