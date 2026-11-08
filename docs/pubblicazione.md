@@ -4,7 +4,25 @@ Questa guida spiega come mettere la piattaforma su un server raggiungibile da in
 
 > **Perché non basta l'hosting Linux di Aruba.** I piani di hosting condiviso eseguono siti in PHP. La piattaforma è invece un programma Node.js che deve restare sempre acceso, quindi serve un server virtuale (VPS). Dell'hosting si usano comunque il **dominio** e le **caselle email**.
 
-## Cosa serve
+## Prova gratuita su Render (modalità dimostrativa)
+
+Per dare un'occhiata alla piattaforma online senza spendere nulla:
+
+1. Crea un account su [render.com](https://render.com) accedendo con GitHub.
+2. Apri [questo link](https://render.com/deploy?repo=https://github.com/giannivestrucci/votazioni) e conferma con **Deploy Blueprint**.
+3. Dopo qualche minuto Render mostra l'indirizzo, del tipo `https://votazioni-prova-xxxx.onrender.com`.
+
+La configurazione è nel file `render.yaml`: piano gratuito, server a Francoforte, `DEMO=1`. In modalità dimostrativa:
+
+- il codice di accesso compare a schermo e non viene inviata nessuna email;
+- alla prima accensione si caricano i dati di esempio (collegio dei docenti ed elezione dei genitori già aperta);
+- ogni pagina mostra la fascia "Ambiente di prova".
+
+Limiti del piano gratuito: il servizio si addormenta dopo 15 minuti senza visite (la prima apertura impiega circa un minuto) e **i dati si cancellano a ogni riavvio**. Chiunque conosca l'indirizzo può entrare con qualunque email, quindi **non usarla mai per votazioni reali**. La piattaforma rifiuta di partire se `DEMO=1` è impostato insieme a `SMTP_URL`.
+
+## Installazione definitiva su un server
+
+### Cosa serve
 
 | Cosa | Dove | Note |
 |---|---|---|
@@ -14,12 +32,12 @@ Questa guida spiega come mettere la piattaforma su un server raggiungibile da in
 
 Per una scuola statale va verificato con il DPO che il servizio cloud scelto sia **qualificato ACN** e che il fornitore sia nominato responsabile del trattamento (art. 28 GDPR), come chiede il §5-6 dell'Allegato tecnico.
 
-## 1. Creare il server
+### 1. Creare il server
 
 1. In Aruba Cloud scegli **Cloud VPS**, sistema operativo **Ubuntu 24.04**.
 2. Imposta la password di `root` (o una chiave SSH) e annota l'**indirizzo IP** del server.
 
-## 2. Collegare il sottodominio
+### 2. Collegare il sottodominio
 
 Nel pannello dell'hosting apri la gestione DNS del dominio e aggiungi:
 
@@ -29,7 +47,7 @@ Nel pannello dell'hosting apri la gestione DNS del dominio e aggiungi:
 
 La propagazione richiede da pochi minuti a qualche ora. Puoi controllare con `ping voto.tuascuola.edu.it`.
 
-## 3. Installare la piattaforma
+### 3. Installare la piattaforma
 
 Collegati al server (da Windows con PowerShell, da Mac o Linux con il Terminale):
 
@@ -71,7 +89,7 @@ bash installa.sh
 
 Dopo un minuto apri `https://voto.tuascuola.edu.it`: il certificato HTTPS viene ottenuto in automatico. Accedi con l'email dell'amministratore e il codice ricevuto per posta.
 
-## 4. Copie di sicurezza
+### 4. Copie di sicurezza
 
 I dati sono in `/opt/votazioni/deploy/dati` (`registro.db` e `urna.db`). Per una copia ogni notte alle 2, conservata 30 giorni:
 
@@ -83,7 +101,7 @@ crontab -e
 
 Conviene copiare periodicamente la cartella di backup anche fuori dal server. Molti fornitori offrono backup automatici del VPS a pagamento.
 
-## 5. Aggiornare
+### 5. Aggiornare
 
 ```bash
 bash /opt/votazioni/deploy/installa.sh
@@ -91,7 +109,7 @@ bash /opt/votazioni/deploy/installa.sh
 
 Lo script scarica l'ultima versione e riavvia la piattaforma senza toccare i dati.
 
-## Comandi utili
+### Comandi utili
 
 ```bash
 cd /opt/votazioni/deploy
